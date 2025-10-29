@@ -7,24 +7,31 @@ A RESTful API backend for a blog application built with Go, Gin, and MongoDB.
 - **CRUD Operations** for blog posts
 - **Analytics Tracking** (views, likes)
 - **MongoDB Integration** with official Go driver
-- **RESTful API Design**
-- **CORS Support**
-- **Environment Configuration**
+- **Structured Error Handling** with consistent API responses
+- **RESTful API Design** with proper HTTP status codes
+- **CORS Support** with configurable origins
+- **Environment Configuration** for development and production
+- **Request/Response Logging** for debugging and monitoring
+- **Docker Support** for easy deployment
 - **Simple & Fast** - No complex migrations needed
 
 ## Project Structure
 
 ```
 dbl-blog-backend/
+├── apierrors/           # Structured error handling and API responses
 ├── database/            # MongoDB connection and configuration
 ├── handlers/            # HTTP handlers for API endpoints
 ├── middleware/          # Custom middleware (CORS, etc.)
-├── models/              # MongoDB models
-├── routes/              # Route definitions
+├── models/              # MongoDB models and data structures
+├── routes/              # Route definitions and setup
 ├── main.go              # Application entry point
-├── go.mod               # Go module file
+├── go.mod               # Go module dependencies
 ├── .env.example         # Environment variables template
-└── README.md            # This file
+├── docker-compose.yml   # Docker development setup
+├── Dockerfile          # Container configuration
+├── Makefile            # Build and development commands
+└── README.md           # This file
 ```
 
 ## API Endpoints
@@ -43,6 +50,29 @@ dbl-blog-backend/
 
 - `GET /health` - Health check endpoint
 
+## Error Handling
+
+The API uses a structured error handling system with consistent responses:
+
+```json
+{
+  "error": "Human-readable error message",
+  "code": "ERROR_CODE"
+}
+```
+
+**Common Error Codes:**
+
+- `VALIDATION_ERROR` - Invalid input data
+- `POST_NOT_FOUND` - Requested post doesn't exist
+- `POST_ALREADY_EXISTS` - Duplicate slug detected
+- `INVALID_POST_ID` - Invalid MongoDB ObjectID format
+- `FAILED_TO_CREATE_POST` - Database insertion failed
+- `FAILED_TO_UPDATE_POST` - Database update failed
+- `FAILED_TO_DELETE_POST` - Database deletion failed
+
+All endpoints return appropriate HTTP status codes (200, 201, 400, 404, 500) along with structured error messages.
+
 ## Setup Instructions
 
 ### Prerequisites
@@ -50,6 +80,7 @@ dbl-blog-backend/
 - Go 1.21 or higher
 - MongoDB 7.0 or higher (or MongoDB Atlas free tier)
 - Git
+- [AIR](https://github.com/cosmtrek/air) for hot reload (optional but recommended for development)
 
 ### 1. Clone and Setup
 
@@ -90,6 +121,8 @@ go mod tidy
 
 ### 5. Run the Application
 
+**Option A: Standard Go Run**
+
 ```bash
 # Development mode
 go run main.go
@@ -97,6 +130,45 @@ go run main.go
 # Or using the Makefile
 make run
 ```
+
+**Option B: Hot Reload with AIR (Recommended for Development)**
+
+[AIR](https://github.com/cosmtrek/air) provides live reload functionality for Go applications.
+
+Install AIR:
+
+```bash
+# Install globally
+go install github.com/cosmtrek/air@latest
+
+# Or install to project (already included in go.mod)
+go mod tidy
+```
+
+Run with hot reload:
+
+```bash
+# Using AIR directly
+air
+
+# Or using the Makefile
+make dev
+```
+
+**What AIR does:**
+
+- 🔄 **Automatically rebuilds** your app when you save files
+- 🚀 **Restarts the server** instantly with changes
+- 📁 **Watches** Go files, templates, and config files
+- ⚡ **Fast development** cycle - no manual restarts needed
+
+**AIR Configuration:**
+The project includes `.air.toml` configuration file that:
+
+- Watches `*.go`, `*.html`, `*.yaml`, `*.yml`, `*.toml` files
+- Excludes vendor, tmp, and test files
+- Builds to `./tmp/main` (automatically cleaned up)
+- Runs with environment variables from `.env`
 
 The server will start on `http://localhost:8080`
 
@@ -195,13 +267,37 @@ curl -X POST http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/view
 ### Available Make Commands
 
 ```bash
-make run          # Run the application
+make dev          # Run with AIR hot reload (recommended)
+make run          # Run the application normally
 make build        # Build the application
 make test         # Run tests
 make mongo-shell  # Open MongoDB shell
 make clean        # Clean build artifacts
 make setup        # Setup development environment
 ```
+
+### Development Workflow
+
+1. **Start development server with hot reload:**
+
+   ```bash
+   make dev
+   ```
+
+   This uses [AIR](https://github.com/cosmtrek/air) to automatically rebuild and restart the server when you make changes to Go files.
+
+2. **Make changes to your code** - AIR will detect changes and reload automatically
+
+3. **Test your changes** using curl or your frontend application
+
+4. **View logs** - All requests and responses are logged with timestamps
+
+**AIR Benefits:**
+
+- ✅ **Instant feedback** - See changes immediately
+- ✅ **Automatic rebuilds** - No manual `ctrl+c` and restart
+- ✅ **Environment variables** - Loads from `.env` automatically
+- ✅ **Error recovery** - Continues watching even if build fails
 
 ### Docker Support
 
@@ -225,21 +321,3 @@ make docker-build
 
 1. Set environment variables in docker-compose.yml
 2. Deploy: `docker-compose up -d`
-
-### Option 3: Cloud Deployment
-
-- Use MongoDB Atlas for the database
-- Deploy to any cloud provider (Heroku, AWS, GCP, etc.)
-- Set `MONGODB_URI` to your Atlas connection string
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.

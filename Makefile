@@ -18,21 +18,30 @@ run:
 	@echo "Running the application..."
 	@go run $(MAIN_PATH)
 
-# Run tests
+# Run unit and integration tests (excludes E2E tests)
 test:
-	@echo "Running tests..."
-	@go test -v ./...
+	@echo "Running unit and integration tests..."
+	@go test -v $$(find . -name "*_test.go" -not -name "*e2e*" -exec dirname {} \; | sort -u | grep -E '\./.+')
 
-# Run tests with Docker MongoDB
-test-docker:
-	@echo "Running tests with Docker MongoDB..."
-	@export TEST_MONGODB_URI="mongodb://admin:password@localhost:27017/dbl_blog_test?authSource=admin" && go test -v ./...
+# Run E2E tests only (requires running API server)
+test-e2e:
+	@echo "Running E2E tests (requires running API server)..."
+	@go test -v $$(find . -name "*e2e*test.go" -exec dirname {} \; | sort -u)
 
-# Run tests with coverage
+# Run tests with coverage (excludes E2E tests)
 test-coverage:
 	@echo "Running tests with coverage..."
-	@go test -v -coverprofile=coverage.out ./...
+	@go test -v -coverprofile=coverage.out $$(find . -name "*_test.go" -not -name "*e2e*" -exec dirname {} \; | sort -u | grep -E '\./.+')
 	@go tool cover -html=coverage.out -o coverage.html
+
+# need to test the coverage command to see if it works correctly
+# need to review the code that the was added
+# need to add test pipelines
+# need to test on postman or curl quickly
+# need to apply this to the frontend and add an admin page where posts can be added and deleted and updated
+# need to test that posts are seen as expected
+# need to deploy the backend and then the frontend
+# need to add the remaining 4 posts
 
 # Install dependencies
 deps:
@@ -98,6 +107,11 @@ docker-run:
 	@echo "Running Docker containers with docker-compose..."
 	@docker-compose up
 
+# Start Docker services in background
+docker-dev:
+	@echo "Starting Docker services in background..."
+	@docker-compose up -d
+
 # MongoDB commands
 mongo-status:
 	@echo "Checking MongoDB status..."
@@ -111,13 +125,24 @@ mongo-drop-db:
 	@echo "Dropping MongoDB database (WARNING: This deletes all data!)..."
 	@mongosh $(DB_NAME) --eval "db.dropDatabase()"
 
+# Show which test files will be executed
+test-list:
+	@echo "Unit/Integration test directories:"
+	@find . -name "*_test.go" -not -name "*e2e*" -exec dirname {} \; | sort -u | grep -E '\./.+' || echo "  (none found)"
+	@echo ""
+	@echo "E2E test directories:"
+	@find . -name "*e2e*test.go" -exec dirname {} \; | sort -u || echo "  (none found)"
+
 # Help
 help:
 	@echo "Available commands:"
 	@echo "  build            - Build the application"
 	@echo "  run              - Run the application"
-	@echo "  test             - Run tests"
-	@echo "  test-coverage    - Run tests with coverage"
+	@echo "  test             - Run unit/integration tests (auto-discovers subdirectories)"
+	@echo "  test-e2e         - Run E2E tests only (auto-discovers e2e test files)"
+	@echo "  test-all-with-docker - Start Docker Compose and run all tests"
+	@echo "  test-coverage    - Run tests with coverage (auto-discovers subdirectories)"
+	@echo "  test-list        - Show which test directories will be executed"
 	@echo "  deps             - Install dependencies"
 	@echo "  clean            - Clean build artifacts"
 	@echo "  mongo-shell      - Open MongoDB shell"
@@ -132,7 +157,8 @@ help:
 	@echo "  dev              - Start development server with hot reload"
 	@echo "  install-air      - Install air for hot reload"
 	@echo "  docker-build     - Build Docker image"
-	@echo "  docker-run       - Run Docker container"
+	@echo "  docker-run       - Run Docker containers (foreground)"
+	@echo "  docker-dev       - Start Docker services in background"
 	@echo "  help             - Show this help"
 
-.PHONY: build run test test-coverage deps clean mongo-shell mongo-ping mongo-status mongo-collections mongo-drop-db fmt lint env setup dev install-air docker-build docker-run help
+.PHONY: build run test test-e2e test-all-with-docker test-coverage test-list deps clean mongo-shell mongo-ping mongo-status mongo-collections mongo-drop-db fmt lint env setup dev install-air docker-build docker-run docker-dev help

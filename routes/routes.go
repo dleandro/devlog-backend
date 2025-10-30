@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"os"
+
 	"dbl-blog-backend/handlers"
 	"dbl-blog-backend/middleware"
 
@@ -34,19 +36,34 @@ func SetupRoutes() *gin.Engine {
 	// Add recovery middleware
 	router.Use(gin.Recovery())
 
+	// Add input sanitization middleware
+	router.Use(middleware.InputSanitizationMiddleware())
+
 	// API v1 group
 	v1 := router.Group("/api/v1")
+
+	// Optional: Add public rate limiting (controlled by environment variable)
+	// This provides an extra layer of protection beyond Vercel's built-in limits
+	if os.Getenv("ENABLE_PUBLIC_RATE_LIMIT") == "true" {
+		v1.Use(middleware.PublicRateLimitMiddleware())
+	}
 	{
 		// Blog posts routes
 		posts := v1.Group("/posts")
 		{
-			posts.POST("", handlers.CreatePost)
-			posts.GET("", handlers.GetPosts)
-			posts.GET("/:id", handlers.GetPost)
-			posts.PUT("/:id", handlers.UpdatePost)
-			posts.DELETE("/:id", handlers.DeletePost)
-			posts.POST("/:id/like", handlers.LikePost)
-			posts.POST("/:id/view", handlers.ViewPost)
+			// Public endpoints (no authentication required)
+			posts.GET("", handlers.GetPosts)           // Get all posts
+			posts.GET("/:id", handlers.GetPost)        // Get single post
+			posts.PUT("/:id/like", handlers.LikePost)  // Like a post
+			posts.POST("/:id/view", handlers.ViewPost) // Track post view
+
+			// Protected endpoints (admin only)
+			adminPosts := posts.Group("", middleware.AdminRateLimitMiddleware(), middleware.AdminAuthMiddleware())
+			{
+				adminPosts.POST("", handlers.CreatePost)       // Create post
+				adminPosts.PUT("/:id", handlers.UpdatePost)    // Update post
+				adminPosts.DELETE("/:id", handlers.DeletePost) // Delete post
+			}
 		}
 	}
 

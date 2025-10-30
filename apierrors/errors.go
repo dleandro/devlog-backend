@@ -25,10 +25,11 @@ const (
 	CodeNotFound         = "NOT_FOUND"
 	CodeConflict         = "CONFLICT"
 	CodeValidationFailed = "VALIDATION_FAILED"
-	
+	CodeUnauthorized     = "UNAUTHORIZED"
+
 	// Server errors (5xx)
-	CodeInternalError    = "INTERNAL_ERROR"
-	CodeDatabaseError    = "DATABASE_ERROR"
+	CodeInternalError = "INTERNAL_ERROR"
+	CodeDatabaseError = "DATABASE_ERROR"
 )
 
 // Predefined API errors for posts
@@ -39,84 +40,109 @@ var (
 		Message: "Invalid post ID format",
 		Details: "The provided post ID is not a valid MongoDB ObjectID",
 	}
-	
+
 	ErrPostNotFound = APIError{
 		Code:    CodeNotFound,
 		Message: "Post not found",
 		Details: "The requested post does not exist or has been deleted",
 	}
-	
+
 	ErrPostAlreadyExists = APIError{
 		Code:    CodeConflict,
 		Message: "Post with this slug already exists",
 		Details: "Please choose a different slug for your post",
 	}
-	
+
 	ErrPostAlreadyLiked = APIError{
 		Code:    CodeConflict,
 		Message: "Post already liked",
 		Details: "You have already liked this post from this IP address",
 	}
-	
+
 	// Database operation errors
 	ErrFailedToCreatePost = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to create post",
 		Details: "An error occurred while saving the post to the database",
 	}
-	
+
 	ErrFailedToFetchPost = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to fetch post",
 		Details: "An error occurred while retrieving the post from the database",
 	}
-	
+
 	ErrFailedToFetchPosts = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to fetch posts",
 		Details: "An error occurred while retrieving posts from the database",
 	}
-	
+
 	ErrFailedToUpdatePost = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to update post",
 		Details: "An error occurred while updating the post in the database",
 	}
-	
+
 	ErrFailedToDeletePost = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to delete post",
 		Details: "An error occurred while deleting the post from the database",
 	}
-	
+
 	ErrFailedToCountPosts = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to count posts",
 		Details: "An error occurred while counting posts in the database",
 	}
-	
+
 	ErrFailedToDecodePosts = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to decode posts",
 		Details: "An error occurred while processing posts data from the database",
 	}
-	
+
 	ErrFailedToRecordLike = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to record like",
 		Details: "An error occurred while saving the like to the database",
 	}
-	
+
 	ErrFailedToUpdateLikeCount = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to update like count",
 		Details: "An error occurred while updating the post's like count",
 	}
-	
+
 	ErrFailedToFetchUpdatedPost = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to fetch updated post",
 		Details: "The post was updated but could not be retrieved for response",
+	}
+
+	// Authentication-related errors
+	ErrMissingAuthorization = APIError{
+		Code:    CodeUnauthorized,
+		Message: "Authorization header required",
+		Details: "Admin operations require a valid API key in the Authorization header",
+	}
+
+	ErrInvalidAuthFormat = APIError{
+		Code:    CodeUnauthorized,
+		Message: "Invalid authorization format",
+		Details: "Use 'Bearer <api-key>' format in the Authorization header",
+	}
+
+	ErrEmptyAPIKey = APIError{
+		Code:    CodeUnauthorized,
+		Message: "API key cannot be empty",
+		Details: "Please provide a valid API key after 'Bearer '",
+	}
+
+	ErrInvalidAPIKey = APIError{
+		Code:    CodeUnauthorized,
+		Message: "Invalid API key",
+		Details: "The provided API key is not valid for admin operations",
 	}
 )
 
@@ -205,4 +231,21 @@ func RespondFailedToUpdateLikeCount(c *gin.Context) {
 
 func RespondFailedToFetchUpdatedPost(c *gin.Context) {
 	RespondWithError(c, http.StatusInternalServerError, ErrFailedToFetchUpdatedPost)
+}
+
+// Authentication error response helpers
+func RespondMissingAuthorization(c *gin.Context) {
+	RespondWithError(c, http.StatusUnauthorized, ErrMissingAuthorization)
+}
+
+func RespondInvalidAuthFormat(c *gin.Context) {
+	RespondWithError(c, http.StatusUnauthorized, ErrInvalidAuthFormat)
+}
+
+func RespondEmptyAPIKey(c *gin.Context) {
+	RespondWithError(c, http.StatusUnauthorized, ErrEmptyAPIKey)
+}
+
+func RespondInvalidAPIKey(c *gin.Context) {
+	RespondWithError(c, http.StatusUnauthorized, ErrInvalidAPIKey)
 }

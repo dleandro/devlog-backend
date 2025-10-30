@@ -9,11 +9,11 @@ import (
 // Post represents a blog post in the database
 type Post struct {
 	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	Title     string             `json:"title" bson:"title" binding:"required"`
-	Content   string             `json:"content" bson:"content" binding:"required"`
-	Slug      string             `json:"slug" bson:"slug" binding:"required"`
-	Summary   string             `json:"summary" bson:"summary,omitempty"`
-	Tags      []string           `json:"tags" bson:"tags,omitempty"` // Array of tags (better for MongoDB)
+	Title     string             `json:"title" bson:"title" binding:"required,min=1,max=200"`
+	Content   string             `json:"content" bson:"content" binding:"required,min=1,max=50000"`
+	Slug      string             `json:"slug" bson:"slug" binding:"required,min=1,max=100"`
+	Summary   string             `json:"summary" bson:"summary,omitempty" binding:"max=500"`
+	Tags      []string           `json:"tags" bson:"tags,omitempty" binding:"max=10,dive,min=1,max=50,alphanum"` // Max 10 tags, each alphanumeric
 	Published bool               `json:"published" bson:"published"`
 	Views     int64              `json:"views" bson:"views"`
 	Likes     int64              `json:"likes" bson:"likes"`

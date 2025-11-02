@@ -1,0 +1,23 @@
+# E2E Test Dockerfile - keeps Go tools for running tests
+FROM golang:1.25.3-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install git and curl for dependencies and health checks
+RUN apk add --no-cache git curl
+
+# Copy go mod files first for better layer caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy all source code including tests
+COPY . .
+
+# Copy .env file for environment variables
+COPY .env .
+
+# Default command (can be overridden in docker-compose)
+CMD ["go", "test", "-v", "./...", "-run", "E2E"]

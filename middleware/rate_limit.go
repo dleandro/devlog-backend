@@ -39,10 +39,10 @@ func getEnvInt(key string, fallback int) int {
 func AdminRateLimitMiddleware() gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
 		clientIP := c.ClientIP()
-		
+
 		// Get rate limit from environment (default: 30 requests per minute)
 		maxRequests := getEnvInt("ADMIN_RATE_LIMIT_PER_MINUTE", 30)
-		
+
 		if !checkRateLimit(adminRateLimiter, clientIP, maxRequests, time.Minute) {
 			log.Printf("[SECURITY] AdminRateLimit: Rate limit exceeded for IP %s (%d requests/minute)", clientIP, maxRequests)
 			apierrors.RespondWithCustomError(c, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "Too many requests", "Please wait before trying again")
@@ -79,12 +79,12 @@ func PublicRateLimitMiddleware() gin.HandlerFunc {
 		}
 
 		if !checkRateLimit(publicRateLimiter, clientIP, maxRequests, window) {
-			log.Printf("[INFO] PublicRateLimit: Rate limit exceeded for IP %s on %s %s (%d requests/minute)", 
+			log.Printf("[INFO] PublicRateLimit: Rate limit exceeded for IP %s on %s %s (%d requests/minute)",
 				clientIP, c.Request.Method, c.Request.URL.Path, maxRequests)
-			
-			apierrors.RespondWithCustomError(c, http.StatusTooManyRequests, 
-				"RATE_LIMIT_EXCEEDED", 
-				"Too many requests", 
+
+			apierrors.RespondWithCustomError(c, http.StatusTooManyRequests,
+				"RATE_LIMIT_EXCEEDED",
+				"Too many requests",
 				"Please slow down and try again in a moment")
 			c.Abort()
 			return
@@ -139,7 +139,7 @@ func cleanupRateLimit(limiter *RateLimiter, cutoff time.Time) {
 				validRequests = append(validRequests, reqTime)
 			}
 		}
-		
+
 		if len(validRequests) == 0 {
 			delete(limiter.requests, ip)
 		} else {

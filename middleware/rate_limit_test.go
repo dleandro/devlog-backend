@@ -199,7 +199,7 @@ func TestRateLimiting_ConcurrentAccess(t *testing.T) {
 
 	// Should allow exactly maxRequests (may vary slightly due to race conditions)
 	// This is a basic test - true concurrent testing would require more sophisticated synchronization
-	assert.True(t, allowedCount >= maxRequests-2 && allowedCount <= maxRequests+2, 
+	assert.True(t, allowedCount >= maxRequests-2 && allowedCount <= maxRequests+2,
 		"Concurrent access should allow approximately %d requests, got %d", maxRequests, allowedCount)
 }
 

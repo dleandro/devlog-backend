@@ -31,6 +31,34 @@ services:
       mongodb:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test:
+        ["CMD", "sh", "-c", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # E2E Test Runner
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    env_file:
+      - .env
+    environment:
+      # Use internal Docker network to communicate with API
+      API_BASE_URL: http://blog-api:8080
+      MONGODB_URI: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@mongodb:27017/${DB_NAME}?authSource=${MONGODB_AUTH_SOURCE}
+      DB_NAME: ${DB_NAME}
+    command: ["sh", "-c", "go test -v ./... -run 'E2E'"]
+    depends_on:
+      blog-api:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    profiles:
+      - test
 
 volumes:
   mongodb_data:

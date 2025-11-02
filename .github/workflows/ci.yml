@@ -1,0 +1,243 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  # Job 1: Code Quality (Formatting and Linting)
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Check formatting
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files are not formatted:"
+            gofmt -s -l .
+            echo "Please run 'go fmt ./...' to fix formatting issues."
+            exit 1
+          fi
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+
+      - name: Run linter
+        run: golangci-lint run --timeout=5m
+
+  # Job 2: Build
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build application
+        run: go build -v -o dbl-blog-backend ./main.go
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: dbl-blog-backend-${{ github.sha }}
+          path: dbl-blog-backend
+          retention-days: 7
+
+  # Job 3: Unit and Integration Tests
+  unit-tests:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    services:
+      mongodb:
+        image: mongo:7-jammy
+        env:
+          MONGO_INITDB_ROOT_USERNAME: testuser
+          MONGO_INITDB_ROOT_PASSWORD: testpass123
+          MONGO_INITDB_DATABASE: dbl_blog_test
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Wait for MongoDB
+        run: |
+          timeout 30 bash -c 'until mongosh --host localhost:27017 --eval "db.adminCommand({ping: 1})" > /dev/null 2>&1; do sleep 1; done'
+
+      - name: Create test environment file
+        run: |
+          cat > .env << EOF
+          # Test Environment
+          MONGODB_USERNAME=testuser
+          MONGODB_PASSWORD=testpass123
+          MONGODB_HOST=localhost
+          MONGODB_PORT=27017
+          MONGODB_AUTH_SOURCE=admin
+          DB_NAME=dbl_blog_test
+          ADMIN_API_KEYS=test-key-1,test-key-2,test-key-3
+          ENABLE_PUBLIC_RATE_LIMIT=false
+          EOF
+
+      - name: Run unit and integration tests
+        run: |
+          # Find and run unit/integration tests (exclude E2E tests)
+          UNIT_DIRS=$(find . -name "*_test.go" -not -name "*e2e*" -exec dirname {} \; | sort -u | grep -E '\./[^/]+$' || true)
+          if [ -n "$UNIT_DIRS" ]; then
+            go test -v -race -coverprofile=coverage.out $UNIT_DIRS
+          else
+            echo "No unit/integration tests found"
+          fi
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: coverage.out
+          retention-days: 7
+        if: success()
+
+  # Job 4: E2E Tests (Full Docker Environment)
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test environment file
+        run: |
+          cat > .env << EOF
+          # E2E Test Environment
+          MONGODB_USERNAME=testuser
+          MONGODB_PASSWORD=testpass123
+          MONGODB_AUTH_SOURCE=admin
+          DB_NAME=dbl_blog_e2e
+          ADMIN_API_KEYS=e2e-test-key-1,e2e-test-key-2,e2e-test-key-3
+          ENABLE_PUBLIC_RATE_LIMIT=false
+          PORT=8080
+          EOF
+
+      - name: Run E2E tests with Docker
+        run: |
+          # Start services and run E2E tests
+          docker compose --profile test up e2e-tests --build --abort-on-container-exit
+
+      - name: Collect Docker logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose Services ==="
+          docker compose ps
+          echo "=== MongoDB Logs ==="
+          docker compose logs mongodb
+          echo "=== Blog API Logs ==="
+          docker compose logs blog-api
+          echo "=== E2E Tests Logs ==="
+          docker compose logs e2e-tests
+
+      - name: Cleanup Docker resources
+        if: always()
+        run: docker compose down -v
+
+  # Job 5: Security Scan (Optional)
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: code-quality
+    continue-on-error: true # Don't fail the entire pipeline on security issues
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Install gosec
+        run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
+      - name: Run security scan
+        run: gosec -fmt json -out gosec-report.json -stdout ./...
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report-${{ github.sha }}
+          path: gosec-report.json
+          retention-days: 30
+        if: always()

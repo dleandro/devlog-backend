@@ -22,7 +22,6 @@ import (
 
 // Test constants for E2E testing against live API
 const (
-	apiBaseURL        = "http://localhost:8080"
 	postsEndpoint     = "/api/v1/posts"
 	contentTypeHeader = "Content-Type"
 	applicationJSON   = "application/json"
@@ -31,6 +30,14 @@ const (
 	updatedTitle      = "Updated E2E Test Post"
 	updatedContent    = "Updated content via E2E test"
 )
+
+// getAPIBaseURL returns the API base URL from environment or default
+func getAPIBaseURL() string {
+	if url := os.Getenv("API_BASE_URL"); url != "" {
+		return url
+	}
+	return "http://localhost:8080"
+}
 
 // getValidAPIKey retrieves the first valid API key from environment
 func getValidAPIKey() string {
@@ -141,7 +148,7 @@ func TestE2ECreatePostWithValidAPIKey(t *testing.T) {
 	postJSON, _ := json.Marshal(testPost)
 
 	// Make REAL HTTP request to RUNNING API server
-	req, _ := http.NewRequest("POST", apiBaseURL+postsEndpoint, bytes.NewBuffer(postJSON))
+	req, _ := http.NewRequest("POST", getAPIBaseURL()+postsEndpoint, bytes.NewBuffer(postJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
 	req.Header.Set("Authorization", bearerPrefix+getValidAPIKey())
 
@@ -179,7 +186,7 @@ func TestE2ECreatePostWithoutAPIKey(t *testing.T) {
 	postJSON, _ := json.Marshal(testPost)
 
 	// Make request WITHOUT Authorization header to RUNNING API
-	req, _ := http.NewRequest("POST", apiBaseURL+postsEndpoint, bytes.NewBuffer(postJSON))
+	req, _ := http.NewRequest("POST", getAPIBaseURL()+postsEndpoint, bytes.NewBuffer(postJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
 	// No Authorization header
 
@@ -228,7 +235,7 @@ func TestE2EGetPosts(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Test getting all posts
-	req, _ := http.NewRequest("GET", apiBaseURL+postsEndpoint, nil)
+	req, _ := http.NewRequest("GET", getAPIBaseURL()+postsEndpoint, nil)
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
@@ -246,7 +253,7 @@ func TestE2EGetPosts(t *testing.T) {
 	}
 
 	// Test filtering by published status
-	req, _ = http.NewRequest("GET", apiBaseURL+postsEndpoint+"?published=true", nil)
+	req, _ = http.NewRequest("GET", getAPIBaseURL()+postsEndpoint+"?published=true", nil)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
@@ -288,7 +295,7 @@ func TestE2ELikePost(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Test liking the post
-	req, _ := http.NewRequest("PUT", apiBaseURL+postsEndpoint+"/"+postID.Hex()+"/like", nil)
+	req, _ := http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex()+"/like", nil)
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
@@ -349,7 +356,7 @@ func TestE2EUpdatePost(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Test updating the post
-	req, _ := http.NewRequest("PUT", apiBaseURL+postsEndpoint+"/"+postID.Hex(), bytes.NewBuffer(updateJSON))
+	req, _ := http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), bytes.NewBuffer(updateJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
 	req.Header.Set("Authorization", bearerPrefix+getValidAPIKey())
 
@@ -411,7 +418,7 @@ func TestE2EDeletePost(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Test deleting the post
-	req, _ := http.NewRequest("DELETE", apiBaseURL+postsEndpoint+"/"+postID.Hex(), nil)
+	req, _ := http.NewRequest("DELETE", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), nil)
 	req.Header.Set("Authorization", bearerPrefix+getValidAPIKey())
 
 	resp, err := client.Do(req)
@@ -465,7 +472,7 @@ func TestE2EUpdatePostWithoutAuth(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Test updating without Authorization header
-	req, _ := http.NewRequest("PUT", apiBaseURL+postsEndpoint+"/"+postID.Hex(), bytes.NewBuffer(updateJSON))
+	req, _ := http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), bytes.NewBuffer(updateJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
 	// No Authorization header
 
@@ -505,7 +512,7 @@ func TestE2EDeletePostWithoutAuth(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Test deleting without Authorization header
-	req, _ := http.NewRequest("DELETE", apiBaseURL+postsEndpoint+"/"+postID.Hex(), nil)
+	req, _ := http.NewRequest("DELETE", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), nil)
 	// No Authorization header
 
 	resp, err := client.Do(req)

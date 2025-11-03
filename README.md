@@ -182,7 +182,7 @@ All endpoints return appropriate HTTP status codes (200, 201, 400, 404, 500) alo
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.25.1 or higher
 - MongoDB 7.0 or higher (or MongoDB Atlas free tier)
 - Git
 - [AIR](https://github.com/cosmtrek/air) for hot reload (optional but recommended for development)

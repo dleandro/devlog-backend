@@ -16,7 +16,7 @@ func SetupRoutes() *gin.Engine {
 	// Configure trusted proxies based on environment
 	if gin.Mode() == gin.ReleaseMode {
 		// For production (Vercel, Railway, etc.), trust common proxy networks
-		router.SetTrustedProxies([]string{
+		_ = router.SetTrustedProxies([]string{
 			"10.0.0.0/8",     // Private networks
 			"172.16.0.0/12",  // Private networks
 			"192.168.0.0/16", // Private networks
@@ -24,7 +24,7 @@ func SetupRoutes() *gin.Engine {
 		})
 	} else {
 		// For local development
-		router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
+		_ = router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
 	}
 
 	// Add CORS middleware

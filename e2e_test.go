@@ -59,7 +59,7 @@ func getValidAPIKey() string {
 // setupE2ETestDB sets up database for testing against live API
 func setupE2ETestDB() func() {
 	// Load environment variables from .env file
-	godotenv.Load()
+	_ = godotenv.Load() // Ignore error as .env file may not exist in test environment
 
 	// Store original database connection and environment
 	originalDB := database.Database
@@ -75,22 +75,22 @@ func setupE2ETestDB() func() {
 
 	// Set up test database environment - use existing env vars or Docker defaults
 	if os.Getenv("DB_NAME") == "" {
-		os.Setenv("DB_NAME", "dbl_blog_e2e_test")
+		_ = os.Setenv("DB_NAME", "dbl_blog_e2e_test")
 	}
 	if os.Getenv("MONGODB_HOST") == "" {
-		os.Setenv("MONGODB_HOST", "localhost")
+		_ = os.Setenv("MONGODB_HOST", "localhost")
 	}
 	if os.Getenv("MONGODB_PORT") == "" {
-		os.Setenv("MONGODB_PORT", "27017")
+		_ = os.Setenv("MONGODB_PORT", "27017")
 	}
 	if os.Getenv("MONGODB_USERNAME") == "" {
-		os.Setenv("MONGODB_USERNAME", "admin")
+		_ = os.Setenv("MONGODB_USERNAME", "admin")
 	}
 	if os.Getenv("MONGODB_PASSWORD") == "" {
-		os.Setenv("MONGODB_PASSWORD", "password")
+		_ = os.Setenv("MONGODB_PASSWORD", "password")
 	}
 	if os.Getenv("MONGODB_AUTH_SOURCE") == "" {
-		os.Setenv("MONGODB_AUTH_SOURCE", "admin")
+		_ = os.Setenv("MONGODB_AUTH_SOURCE", "admin")
 	}
 
 	// Use the ACTUAL database connection logic from the API
@@ -100,7 +100,7 @@ func setupE2ETestDB() func() {
 	if database.Database != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		database.Database.Collection("posts").Drop(ctx)
+		_ = database.Database.Collection("posts").Drop(ctx) // Ignore error in test cleanup
 	}
 
 	return func() {
@@ -108,7 +108,7 @@ func setupE2ETestDB() func() {
 		if database.Database != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			database.Database.Collection("posts").Drop(ctx)
+			_ = database.Database.Collection("posts").Drop(ctx) // Ignore error in test cleanup
 		}
 
 		// Disconnect using the real API's disconnect function
@@ -121,9 +121,9 @@ func setupE2ETestDB() func() {
 		// Restore all original environment variables
 		for key, value := range originalEnvVars {
 			if value == "" {
-				os.Unsetenv(key)
+				_ = os.Unsetenv(key)
 			} else {
-				os.Setenv(key, value)
+				_ = os.Setenv(key, value)
 			}
 		}
 	}
@@ -156,7 +156,7 @@ func TestE2ECreatePostWithValidAPIKey(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	// Assertions
@@ -194,7 +194,7 @@ func TestE2ECreatePostWithoutAPIKey(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	// Should get 401 Unauthorized
@@ -239,7 +239,7 @@ func TestE2EGetPosts(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	if assert.NotNil(t, resp, responseNotNil) {
@@ -257,7 +257,7 @@ func TestE2EGetPosts(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	if assert.NotNil(t, resp, responseNotNil) {
@@ -299,7 +299,7 @@ func TestE2ELikePost(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	if assert.NotNil(t, resp, responseNotNil) {
@@ -363,7 +363,7 @@ func TestE2EUpdatePost(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	if assert.NotNil(t, resp, responseNotNil) {
@@ -424,7 +424,7 @@ func TestE2EDeletePost(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	if assert.NotNil(t, resp, responseNotNil) {
@@ -479,7 +479,7 @@ func TestE2EUpdatePostWithoutAuth(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	// Should get 401 Unauthorized
@@ -518,7 +518,7 @@ func TestE2EDeletePostWithoutAuth(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	// Should get 401 Unauthorized

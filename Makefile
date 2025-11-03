@@ -91,6 +91,18 @@ fmt:
 	@echo "Formatting code..."
 	@go fmt ./...
 
+# Check code formatting (for CI)
+fmt-check:
+	@echo "Checking code formatting..."
+	@if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then \
+		echo "❌ The following files are not formatted:"; \
+		gofmt -s -l .; \
+		echo "Please run 'make fmt' to fix formatting issues."; \
+		exit 1; \
+	else \
+		echo "✅ Code formatting is correct"; \
+	fi
+
 # Lint code
 lint:
 	@echo "Linting code..."
@@ -200,6 +212,7 @@ help:
 	@echo "  mongo-collections- List MongoDB collections"
 	@echo "  mongo-drop-db    - Drop MongoDB database (WARNING!)"
 	@echo "  fmt              - Format code"
+	@echo "  fmt-check        - Check code formatting (for CI)"
 	@echo "  lint             - Lint code"
 	@echo "  ci-local         - Run CI pipeline locally (format, lint, build, test)"
 	@echo "  env              - Create .env file from example"
@@ -212,4 +225,4 @@ help:
 	@echo "  docker-debug     - Debug Docker services (show logs and status)"
 	@echo "  help             - Show this help"
 
-.PHONY: build run test test-e2e test-all-local test-e2e-docker test-e2e-docker-dev test-all-with-docker test-coverage test-list deps clean mongo-shell mongo-ping mongo-status mongo-collections mongo-drop-db fmt lint ci-local env setup dev install-air docker-build docker-run docker-dev docker-debug help
+.PHONY: build run test test-e2e test-all-local test-e2e-docker test-e2e-docker-dev test-all-with-docker test-coverage test-list deps clean mongo-shell mongo-ping mongo-status mongo-collections mongo-drop-db fmt fmt-check lint ci-local env setup dev install-air docker-build docker-run docker-dev docker-debug help

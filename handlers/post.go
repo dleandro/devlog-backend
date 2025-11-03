@@ -107,7 +107,7 @@ func GetPosts(c *gin.Context) {
 		apierrors.RespondFailedToFetchPosts(c)
 		return
 	}
-	defer cursor.Close(context.Background())
+	defer func() { _ = cursor.Close(context.Background()) }()
 
 	var posts []models.Post
 	if err = cursor.All(context.Background(), &posts); err != nil {

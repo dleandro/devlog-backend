@@ -74,9 +74,5 @@ func containsSuspiciousPatterns(input string) bool {
 
 	// Check for potential JavaScript injection in MongoDB
 	jsRegex := regexp.MustCompile(`(?i)(function\s*\(|eval\s*\(|this\.|document\.|window\.)`)
-	if jsRegex.MatchString(input) {
-		return true
-	}
-
-	return false
+	return jsRegex.MatchString(input)
 }

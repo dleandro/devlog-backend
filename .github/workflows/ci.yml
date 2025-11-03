@@ -20,10 +20,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.25.1"
 
       - name: Cache Go modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -36,20 +36,14 @@ jobs:
         run: go mod download
 
       - name: Check formatting
-        run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "The following files are not formatted:"
-            gofmt -s -l .
-            echo "Please run 'go fmt ./...' to fix formatting issues."
-            exit 1
-          fi
+        run: make fmt-check
 
       - name: Install golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.6.0
 
       - name: Run linter
-        run: golangci-lint run --timeout=5m
+        run: make lint
 
   # Job 2: Build
   build:
@@ -64,10 +58,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.25.1"
 
       - name: Cache Go modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -80,10 +74,10 @@ jobs:
         run: go mod download
 
       - name: Build application
-        run: go build -v -o dbl-blog-backend ./main.go
+        run: make build
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dbl-blog-backend-${{ github.sha }}
           path: dbl-blog-backend
@@ -95,21 +89,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
 
-    services:
-      mongodb:
-        image: mongo:7-jammy
-        env:
-          MONGO_INITDB_ROOT_USERNAME: testuser
-          MONGO_INITDB_ROOT_PASSWORD: testpass123
-          MONGO_INITDB_DATABASE: dbl_blog_test
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.adminCommand({ping: 1})'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -117,10 +96,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.25.1"
 
       - name: Cache Go modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -132,41 +111,8 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Wait for MongoDB
-        run: |
-          timeout 30 bash -c 'until mongosh --host localhost:27017 --eval "db.adminCommand({ping: 1})" > /dev/null 2>&1; do sleep 1; done'
-
-      - name: Create test environment file
-        run: |
-          cat > .env << EOF
-          # Test Environment
-          MONGODB_USERNAME=testuser
-          MONGODB_PASSWORD=testpass123
-          MONGODB_HOST=localhost
-          MONGODB_PORT=27017
-          MONGODB_AUTH_SOURCE=admin
-          DB_NAME=dbl_blog_test
-          ADMIN_API_KEYS=test-key-1,test-key-2,test-key-3
-          ENABLE_PUBLIC_RATE_LIMIT=false
-          EOF
-
       - name: Run unit and integration tests
-        run: |
-          # Find and run unit/integration tests (exclude E2E tests)
-          UNIT_DIRS=$(find . -name "*_test.go" -not -name "*e2e*" -exec dirname {} \; | sort -u | grep -E '\./[^/]+$' || true)
-          if [ -n "$UNIT_DIRS" ]; then
-            go test -v -race -coverprofile=coverage.out $UNIT_DIRS
-          else
-            echo "No unit/integration tests found"
-          fi
-
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-report-${{ github.sha }}
-          path: coverage.out
-          retention-days: 7
-        if: success()
+        run: make test
 
   # Job 4: E2E Tests (Full Docker Environment)
   e2e-tests:
@@ -192,9 +138,7 @@ jobs:
           EOF
 
       - name: Run E2E tests with Docker
-        run: |
-          # Start services and run E2E tests
-          docker compose --profile test up e2e-tests --build --abort-on-container-exit
+        run: make test-e2e-docker
 
       - name: Collect Docker logs on failure
         if: failure()
@@ -226,16 +170,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.25.1"
 
-      - name: Install gosec
-        run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
-
-      - name: Run security scan
-        run: gosec -fmt json -out gosec-report.json -stdout ./...
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
 
       - name: Upload security report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-report-${{ github.sha }}
           path: gosec-report.json

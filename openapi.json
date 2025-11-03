@@ -1,0 +1,827 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DBL Blog Backend API",
+    "description": "A RESTful API for managing blog posts with features including CRUD operations, post viewing and liking functionality, admin authentication, pagination and filtering support, and rate limiting.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://your-api-domain.com/api/v1",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "AdminApiKey": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health Check"],
+        "summary": "Health check endpoint",
+        "description": "Returns the health status of the API",
+        "operationId": "healthCheck",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Blog API is running"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get all blog posts",
+        "description": "Retrieve a paginated list of blog posts with optional filtering",
+        "operationId": "getPosts",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for pagination (default: 1)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of posts per page (default: 10, max: 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "example": 10
+            }
+          },
+          {
+            "name": "published",
+            "in": "query",
+            "description": "Filter by publication status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "example": "true"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved posts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "posts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Post"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Create a new blog post",
+        "description": "Create a new blog post (admin only)",
+        "operationId": "createPost",
+        "security": [
+          {
+            "AdminApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostInput"
+              },
+              "examples": {
+                "example1": {
+                  "summary": "Sample blog post",
+                  "value": {
+                    "title": "My First Blog Post",
+                    "content": "This is the content of my first blog post. It contains detailed information about the topic.",
+                    "slug": "my-first-blog-post",
+                    "summary": "A brief summary of my first blog post",
+                    "tags": ["technology", "programming", "web"],
+                    "published": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Post created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/posts/{id}": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get a specific blog post",
+        "description": "Retrieve a single blog post by its ID",
+        "operationId": "getPost",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the blog post",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Posts"],
+        "summary": "Update a blog post",
+        "description": "Update an existing blog post (admin only)",
+        "operationId": "updatePost",
+        "security": [
+          {
+            "AdminApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the blog post",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Post updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Posts"],
+        "summary": "Delete a blog post",
+        "description": "Delete an existing blog post (admin only)",
+        "operationId": "deletePost",
+        "security": [
+          {
+            "AdminApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the blog post",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Post deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Post deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/posts/{id}/like": {
+      "put": {
+        "tags": ["Posts"],
+        "summary": "Like a blog post",
+        "description": "Increment the like count for a specific blog post",
+        "operationId": "likePost",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the blog post",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Post liked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Post liked successfully"
+                    },
+                    "likes": {
+                      "type": "integer",
+                      "format": "int64",
+                      "example": 42
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/posts/{id}/view": {
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Track a post view",
+        "description": "Record a view for analytics purposes",
+        "operationId": "viewPost",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the blog post",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "View tracked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "View tracked successfully"
+                    },
+                    "views": {
+                      "type": "integer",
+                      "format": "int64",
+                      "example": 123
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AdminApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Admin API key for protected endpoints"
+      }
+    },
+    "schemas": {
+      "Post": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "slug",
+          "published",
+          "views",
+          "likes",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{24}$",
+            "description": "Unique MongoDB ObjectID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The title of the blog post",
+            "example": "My First Blog Post"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50000,
+            "description": "The main content of the blog post (supports Markdown)",
+            "example": "This is the content of my first blog post..."
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "URL-friendly version of the title",
+            "example": "my-first-blog-post"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Optional brief summary of the post",
+            "example": "A brief summary of my first blog post"
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "pattern": "^[a-zA-Z0-9]+$"
+            },
+            "description": "Array of tags associated with the post (alphanumeric only)",
+            "example": ["technology", "programming", "web"]
+          },
+          "published": {
+            "type": "boolean",
+            "description": "Whether the post is published and visible to the public",
+            "example": true
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Number of times the post has been viewed",
+            "example": 123
+          },
+          "likes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Number of likes the post has received",
+            "example": 42
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the post was created",
+            "example": "2023-11-03T10:30:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the post was last updated",
+            "example": "2023-11-03T15:45:00Z"
+          }
+        }
+      },
+      "PostInput": {
+        "type": "object",
+        "required": ["title", "content", "slug"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The title of the blog post",
+            "example": "My First Blog Post"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50000,
+            "description": "The main content of the blog post (supports Markdown)",
+            "example": "This is the content of my first blog post..."
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "URL-friendly version of the title (auto-generated if not provided)",
+            "example": "my-first-blog-post"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Optional brief summary of the post",
+            "example": "A brief summary of my first blog post"
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "pattern": "^[a-zA-Z0-9]+$"
+            },
+            "description": "Array of tags associated with the post (alphanumeric only)",
+            "example": ["technology", "programming", "web"]
+          },
+          "published": {
+            "type": "boolean",
+            "description": "Whether the post is published and visible to the public",
+            "default": false,
+            "example": true
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "required": [
+          "current_page",
+          "total_pages",
+          "total_posts",
+          "has_next",
+          "has_prev"
+        ],
+        "properties": {
+          "current_page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Current page number",
+            "example": 1
+          },
+          "total_pages": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total number of pages",
+            "example": 5
+          },
+          "total_posts": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total number of posts",
+            "example": 42
+          },
+          "has_next": {
+            "type": "boolean",
+            "description": "Whether there is a next page",
+            "example": true
+          },
+          "has_prev": {
+            "type": "boolean",
+            "description": "Whether there is a previous page",
+            "example": false
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/APIError"
+          }
+        }
+      },
+      "APIError": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code for programmatic handling",
+            "enum": [
+              "BAD_REQUEST",
+              "NOT_FOUND",
+              "CONFLICT",
+              "VALIDATION_FAILED",
+              "UNAUTHORIZED",
+              "INTERNAL_ERROR",
+              "DATABASE_ERROR"
+            ],
+            "example": "VALIDATION_FAILED"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message",
+            "example": "Validation failed for the request"
+          },
+          "details": {
+            "type": "string",
+            "description": "Additional details about the error",
+            "example": "The 'title' field is required and cannot be empty"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - Invalid input or malformed request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validation_error": {
+                "summary": "Validation error",
+                "value": {
+                  "error": {
+                    "code": "VALIDATION_FAILED",
+                    "message": "Validation failed for the request",
+                    "details": "The 'title' field is required and cannot be empty"
+                  }
+                }
+              },
+              "invalid_id": {
+                "summary": "Invalid ID format",
+                "value": {
+                  "error": {
+                    "code": "BAD_REQUEST",
+                    "message": "Invalid post ID format",
+                    "details": "The provided post ID is not a valid MongoDB ObjectID"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - Invalid or missing API key",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Authentication required",
+                "details": "Please provide a valid API key in the X-API-Key header"
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found - Requested resource does not exist",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "NOT_FOUND",
+                "message": "Post not found",
+                "details": "The requested post does not exist or has been deleted"
+              }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict - Resource already exists (duplicate slug)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "CONFLICT",
+                "message": "Post already exists",
+                "details": "A post with this slug already exists"
+              }
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Too many requests - Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "TOO_MANY_REQUESTS",
+                "message": "Rate limit exceeded",
+                "details": "Please wait before making another request"
+              }
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred",
+                "details": "Please try again later or contact support"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Health Check",
+      "description": "API health monitoring"
+    },
+    {
+      "name": "Posts",
+      "description": "Blog post management and interaction"
+    }
+  ]
+}

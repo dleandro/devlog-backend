@@ -28,8 +28,9 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-code-quality-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/go.mod') }}
           restore-keys: |
+            ${{ runner.os }}-go-code-quality-
             ${{ runner.os }}-go-
 
       - name: Download dependencies
@@ -66,8 +67,9 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/go.mod') }}
           restore-keys: |
+            ${{ runner.os }}-go-build-
             ${{ runner.os }}-go-
 
       - name: Download dependencies
@@ -104,8 +106,9 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-unit-tests-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/go.mod') }}
           restore-keys: |
+            ${{ runner.os }}-go-unit-tests-
             ${{ runner.os }}-go-
 
       - name: Download dependencies

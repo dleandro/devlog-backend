@@ -2,24 +2,6 @@
 
 A RESTful API backend for a blog application built with Go, Gin, and MongoDB.
 
-## Features
-
-- **CRUD Operations** for blog posts
-- **Analytics Tracking** (views, likes)
-- **MongoDB Integration** with official Go driver
-- **Structured Error Handling** with consistent API responses
-- **RESTful API Design** with proper HTTP status codes and idempotent operations
-- **CORS Support** with configurable origins
-- **Environment Configuration** for development and production
-- **Request/Response Logging** for debugging and monitoring
-- **Docker Support** for easy deployment
-- **API Key Authentication** with Bearer token support
-- **Rate Limiting** protection against abuse
-- **Input Sanitization** preventing NoSQL injection attacks
-- **Security Middleware** with timing attack resistance
-- **Comprehensive Testing** with E2E and unit tests
-- **Simple & Fast** - No complex migrations needed
-
 ## Project Structure
 
 ```
@@ -267,13 +249,6 @@ air
 make dev
 ```
 
-**What AIR does:**
-
-- 🔄 **Automatically rebuilds** your app when you save files
-- 🚀 **Restarts the server** instantly with changes
-- 📁 **Watches** Go files, templates, and config files
-- ⚡ **Fast development** cycle - no manual restarts needed
-
 **AIR Configuration:**
 The project includes `.air.toml` configuration file that:
 
@@ -305,40 +280,6 @@ The server will start on `http://localhost:8080`
 | `PUBLIC_GET_RATE_LIMIT_PER_MINUTE`     | Public GET requests rate limit                  | 120              | No       |
 | `PUBLIC_SOCIAL_RATE_LIMIT_PER_MINUTE`  | Public social interactions rate limit           | 60               | No       |
 | `PUBLIC_DEFAULT_RATE_LIMIT_PER_MINUTE` | Public default rate limit                       | 100              | No       |
-
-### Security Configuration
-
-The application automatically configures security features with flexible rate limiting:
-
-**Rate Limiting Configuration:**
-
-- **Admin Operations**: Configurable per-minute limits (default: 30/minute)
-- **Public GET Requests**: Configurable browsing limits (default: 120/minute)
-- **Social Interactions**: Configurable like/view limits (default: 60/minute)
-- **General Public**: Configurable default limits (default: 100/minute)
-
-**Security Features:**
-
-- **Multiple API Key Support**: Comma-separated keys for rotation
-- **Input Sanitization**: Enabled by default for all requests
-- **Timing Attack Resistance**: Constant-time API key comparison
-- **CORS**: Configurable origins for cross-origin requests
-
-### Public Endpoint Protection
-
-While hosting providers like Vercel provide infrastructure-level DDoS protection, you can enable additional application-level rate limiting:
-
-```bash
-# In your .env file
-ENABLE_PUBLIC_RATE_LIMIT=true
-```
-
-**When to Enable Public Rate Limiting:**
-
-- ✅ High-traffic production deployments
-- ✅ Cost-sensitive MongoDB usage
-- ✅ Extra protection against application-level abuse
-- ❌ Not needed for most small-medium blogs (Vercel's protection is sufficient)
 
 ## MongoDB Collections
 
@@ -470,42 +411,6 @@ The middleware stack executes in the following order for different endpoint type
 7. Handler                  // Execute endpoint logic
 ```
 
-This layered approach ensures security checks happen in the right order while maintaining performance.
-
-### Security Features
-
-**NoSQL Injection Protection:**
-
-```go
-// Automatically blocks requests containing:
-- MongoDB operators: $where, $ne, $gt, etc.
-- JavaScript injection attempts
-- Malicious regex patterns
-- Invalid BSON structures
-```
-
-**Rate Limiting:**
-
-```go
-// Configurable per-IP rate limiting with:
-- Admin Operations: Environment configurable (default: 30/minute)
-- Public GET: Environment configurable (default: 120/minute)
-- Social Actions: Environment configurable (default: 60/minute)
-- Sliding window algorithm with automatic cleanup
-- Thread-safe implementation with mutex protection
-- Optional public endpoint protection
-```
-
-**API Key Security:**
-
-```go
-// Secure API key handling with:
-- Constant-time comparison (timing attack resistance)
-- Bearer token format validation
-- Environment-based configuration
-- Comprehensive error logging
-```
-
 ## Usage Examples
 
 ### Create a Post
@@ -544,153 +449,24 @@ curl -X PUT http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/like
 curl -X POST http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/view
 ```
 
-## Development
-
-### Available Make Commands
-
-```bash
-make dev          # Run with AIR hot reload (recommended)
-make run          # Run the application normally
-make build        # Build the application
-make test         # Run all tests (unit + E2E)
-make test-docker  # Run tests with Docker MongoDB
-make test-coverage # Run tests with coverage report
-make fmt          # Format code
-make lint         # Lint code with golangci-lint
-make mongo-shell  # Open MongoDB shell
-make mongo-ping   # Check MongoDB connection
-make clean        # Clean build artifacts
-make setup        # Setup development environment
-make docker-build # Build Docker image
-make docker-run   # Run with docker-compose
-make install-air  # Install AIR for hot reload
-```
-
 ### Testing
 
-The project includes comprehensive test coverage:
-
-**End-to-End (E2E) Tests:**
-
-- Authentication security tests
-- Protected endpoint access control
-- Public endpoint accessibility
-- Malformed request handling
-- Timing attack resistance validation
-
-**Unit Tests:**
-
-- Rate limiting functionality
-- Middleware components
-- Handler logic
-- Helper functions
-
-**Run Tests:**
-
 ```bash
-# Run all tests
+# Run unit and integration tests
 make test
 
-# Run with verbose output
-go test ./... -v
-
-# Run only E2E tests
-go test ./handlers/ -run TestE2E -v
-
-# Run only rate limiting tests
-go test ./middleware/ -run TestRateLimiting -v
-
-# Run tests with Docker MongoDB
-make test-docker
-
-# Run with coverage
-go test ./... -cover
-```
-
-**Test Coverage:**
-
-- **End-to-end testing**: ✅ 10 comprehensive E2E test cases (`e2e_test.go`)
-- **Rate limiting**: ✅ 11 unit test cases (`middleware/rate_limit_test.go`)
-- **Complete CRUD operations**: ✅ E2E tests for all endpoints with authentication (`e2e_test.go`)
-- **Input validation**: ✅ Multiple edge cases across all tests
-- **Environment configuration**: ✅ Helper function tests
-
-### Development Workflow
-
-1. **Start development server with hot reload:**
-
-   ```bash
-   make dev
-   ```
-
-   This uses [AIR](https://github.com/cosmtrek/air) to automatically rebuild and restart the server when you make changes to Go files.
-
-2. **Make changes to your code** - AIR will detect changes and reload automatically
-
-3. **Test your changes** using curl or your frontend application
-
-4. **View logs** - All requests and responses are logged with timestamps
-
-**AIR Benefits:**
-
-- ✅ **Instant feedback** - See changes immediately
-- ✅ **Automatic rebuilds** - No manual `ctrl+c` and restart
-- ✅ **Environment variables** - Loads from `.env` automatically
-- ✅ **Error recovery** - Continues watching even if build fails
+# Run e2e tests with the blog-api and mongodb running on docker
+make test-e2e
 
 ### Docker Support
 
 ```bash
 # Run with Docker Compose (includes MongoDB)
-docker-compose up
+make docker-run
 
 # Build Docker image
 make docker-build
 ```
-
-## Deployment
-
-### Hosting Provider Protection
-
-**Vercel:**
-
-- ✅ Global CDN with DDoS protection
-- ✅ Automatic scaling and load balancing
-- ✅ Built-in rate limiting (plan-dependent)
-- ✅ Bot detection and malicious traffic filtering
-- 💡 **Recommendation**: Vercel's protection is sufficient for most blogs
-
-**Railway/Render:**
-
-- ✅ Infrastructure-level DDoS protection
-- ✅ Automatic scaling capabilities
-- 💡 **Recommendation**: Consider enabling public rate limiting for extra protection
-
-**When to Enable Additional Rate Limiting:**
-
-```bash
-# Enable for high-traffic or cost-sensitive deployments
-ENABLE_PUBLIC_RATE_LIMIT=true
-```
-
-### Option 1: Vercel Deployment (Recommended)
-
-1. Deploy to Vercel with automatic scaling
-2. Set environment variables in Vercel dashboard
-3. Vercel handles DDoS protection automatically
-4. No additional rate limiting needed for most use cases
-
-### Option 2: Traditional Deployment
-
-1. Set environment variables for production (especially `MONGODB_URI`)
-2. Build the application: `make build`
-3. Start the server: `./dbl-blog-backend`
-4. Consider enabling public rate limiting: `ENABLE_PUBLIC_RATE_LIMIT=true`
-
-### Option 3: Docker Deployment
-
-1. Set environment variables in docker-compose.yml
-2. Deploy: `docker-compose up -d`
 
 ## Troubleshooting
 
@@ -767,17 +543,6 @@ go install github.com/cosmtrek/air@latest
 # Verify file extensions in cmd/include_ext
 ```
 
-**Tests Failing?**
-
-```bash
-# Run specific test suites
-go test ./handlers/ -v -run TestE2E
-go test ./middleware/ -v -run TestRateLimiting
-
-# Check MongoDB test database access
-# E2E tests use separate test database
-```
-
 **Build Issues?**
 
 ```bash
@@ -786,64 +551,3 @@ make clean
 go mod tidy
 make build
 ```
-
-## Frontend Integration
-
-For frontend developers wanting to integrate with this API, see the comprehensive integration guide:
-
-📖 **[Frontend Integration Guide](./FRONTEND_INTEGRATION_PROMPT.md)**
-
-This guide includes:
-
-- Complete API documentation with TypeScript interfaces
-- Ready-to-use code examples for popular frameworks
-- Authentication setup instructions
-- Error handling patterns
-- Real-world integration examples
-
-**Quick Start for Frontend:**
-
-```javascript
-// Example API call
-const response = await fetch("http://localhost:8080/api/v1/posts");
-const data = await response.json();
-console.log(data.posts); // Array of blog posts
-```
-
-**Framework Support:**
-
-- Svelte/SvelteKit
-- React/Next.js
-- Vue/Nuxt.js
-- Vanilla JavaScript
-- Any framework that supports HTTP requests
-
-## Architecture Summary
-
-This blog backend implements a modern, secure, and scalable REST API with the following key architectural decisions:
-
-### 🏗️ **Modular Design**
-
-- **Separation of Concerns**: Clear separation between handlers, middleware, models, and routes
-- **Consolidated Rate Limiting**: Single module handling both admin and public rate limiting
-- **Structured Error Handling**: Consistent API error responses across all endpoints
-
-### 🔒 **Security-First Approach**
-
-- **Layered Security**: Multiple middleware layers (CORS → Sanitization → Rate Limiting → Auth)
-- **Configurable Protection**: Environment-driven rate limits and security settings
-- **Production-Ready**: Timing attack resistance, input validation, and comprehensive logging
-
-### ⚡ **Performance & Scalability**
-
-- **Efficient Rate Limiting**: Thread-safe implementation with automatic cleanup
-- **Minimal Dependencies**: Lean dependency tree for better security and performance
-- **Cloud-Ready**: Docker support and hosting provider compatibility
-
-### 🧪 **Quality Assurance**
-
-- **Comprehensive Testing**: E2E security tests, unit tests, and integration tests
-- **Development Experience**: Hot reload, linting, and automated testing
-- **Documentation**: Complete API documentation and frontend integration guides
-
-This architecture provides a solid foundation for a production blog API while remaining maintainable and extensible.

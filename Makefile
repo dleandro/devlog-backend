@@ -58,7 +58,6 @@ test-e2e-docker:
 	@docker compose --profile test up e2e-tests --build --abort-on-container-exit
 	
 # need to review the code that the was added
-# need to add test pipelines
 # need to test on postman or curl quickly
 # need to apply this to the frontend and add an admin page where posts can be added and deleted and updated
 # need to test that posts are seen as expected
@@ -163,12 +162,7 @@ docker-build:
 
 docker-run:
 	@echo "Running Docker containers with docker-compose..."
-	@docker-compose up
-
-# Start Docker services in background
-docker-dev:
-	@echo "Starting Docker services in background..."
-	@docker-compose up -d
+	@docker-compose up blog-api
 
 # MongoDB commands
 mongo-status:

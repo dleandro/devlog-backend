@@ -56,13 +56,6 @@ test-e2e-docker:
 	@echo "Running E2E tests with Docker..."
 	@echo "This will start all services and run E2E tests inside Docker containers"
 	@docker compose --profile test up e2e-tests --build --abort-on-container-exit
-	
-# need to review the code that the was added
-# need to test on postman or curl quickly
-# need to apply this to the frontend and add an admin page where posts can be added and deleted and updated
-# need to test that posts are seen as expected
-# need to deploy the backend and then the frontend
-# need to add the remaining 4 posts
 
 # Install dependencies
 deps:

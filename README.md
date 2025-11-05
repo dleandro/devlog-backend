@@ -43,7 +43,7 @@ dbl-blog-backend/
 - `GET /api/v1/posts` - Get all posts (with pagination and filtering)
 - `GET /api/v1/posts/:id` - Get a specific post by ID or slug
 - `PUT /api/v1/posts/:id/like` - Like a post
-- `POST /api/v1/posts/:id/view` - Track post view
+- `PUT /api/v1/posts/:id/view` - Track post view
 
 ### Protected Endpoints (Admin API Key Required)
 
@@ -446,12 +446,12 @@ curl -X PUT http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/like
 ### Track a Post View
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/view
+curl -X PUT http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/view
 ```
 
 ### Testing
 
-```bash
+````bash
 # Run unit and integration tests
 make test
 
@@ -466,7 +466,7 @@ make docker-run
 
 # Build Docker image
 make docker-build
-```
+````
 
 ## Troubleshooting
 

@@ -52,10 +52,10 @@ func SetupRoutes() *gin.Engine {
 		posts := v1.Group("/posts")
 		{
 			// Public endpoints (no authentication required)
-			posts.GET("", handlers.GetPosts)           // Get all posts
-			posts.GET("/:id", handlers.GetPost)        // Get single post
-			posts.PUT("/:id/like", handlers.LikePost)  // Like a post
-			posts.POST("/:id/view", handlers.ViewPost) // Track post view
+			posts.GET("", handlers.GetPosts)          // Get all posts
+			posts.GET("/:id", handlers.GetPost)       // Get single post
+			posts.PUT("/:id/like", handlers.LikePost) // Like a post
+			posts.PUT("/:id/view", handlers.ViewPost) // Track post view
 
 			// Protected endpoints (admin only)
 			adminPosts := posts.Group("", middleware.AdminRateLimitMiddleware(), middleware.AdminAuthMiddleware())

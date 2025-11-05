@@ -318,6 +318,136 @@ func TestE2ELikePost(t *testing.T) {
 	assert.Equal(t, int64(1), updatedPost.Likes)
 }
 
+// TestE2EGetSinglePost tests fetching a single post by ID
+func TestE2EGetSinglePost(t *testing.T) {
+	cleanup := setupE2ETestDB()
+	defer cleanup()
+
+	// Create a test post in database
+	testPost := models.Post{
+		Title:     "E2E Single Post Test",
+		Content:   "Content for single post E2E test",
+		Slug:      "e2e-single-post-test",
+		Published: true,
+		Views:     5, // Start with some views
+		Likes:     0,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	collection := database.Database.Collection("posts")
+	result, err := collection.InsertOne(context.Background(), testPost)
+	assert.NoError(t, err)
+
+	postID := result.InsertedID.(primitive.ObjectID)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	// Test GET single post by ID
+	req, _ := http.NewRequest("GET", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), nil)
+
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
+
+	if assert.NotNil(t, resp, responseNotNil) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var post models.Post
+		err = json.NewDecoder(resp.Body).Decode(&post)
+		assert.NoError(t, err)
+		assert.Equal(t, testPost.Title, post.Title)
+		assert.Equal(t, testPost.Content, post.Content)
+		assert.Equal(t, testPost.Slug, post.Slug)
+		assert.Equal(t, int64(5), post.Views) // Should remain 5 (no auto-increment)
+	}
+
+	// Test GET single post by slug
+	req, _ = http.NewRequest("GET", getAPIBaseURL()+postsEndpoint+"/"+testPost.Slug, nil)
+
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
+
+	if assert.NotNil(t, resp, responseNotNil) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var post models.Post
+		err = json.NewDecoder(resp.Body).Decode(&post)
+		assert.NoError(t, err)
+		assert.Equal(t, testPost.Title, post.Title)
+		assert.Equal(t, int64(5), post.Views) // Should still remain 5
+	}
+}
+
+// TestE2ETrackPostView tests the track post view endpoint
+func TestE2ETrackPostView(t *testing.T) {
+	cleanup := setupE2ETestDB()
+	defer cleanup()
+
+	// Create a test post in database
+	testPost := models.Post{
+		Title:     "E2E View Tracking Test",
+		Content:   "Content for view tracking E2E test",
+		Slug:      "e2e-view-tracking-test",
+		Published: true,
+		Views:     10, // Start with 10 views
+		Likes:     0,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	collection := database.Database.Collection("posts")
+	result, err := collection.InsertOne(context.Background(), testPost)
+	assert.NoError(t, err)
+
+	postID := result.InsertedID.(primitive.ObjectID)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	// Test PUT track view
+	req, _ := http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex()+"/view", nil)
+
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
+
+	if assert.NotNil(t, resp, responseNotNil) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var response map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
+		assert.Contains(t, response, "message")
+		assert.Contains(t, response, "views")
+
+		// Should return incremented view count
+		views, ok := response["views"].(float64) // JSON numbers are float64
+		assert.True(t, ok)
+		assert.Equal(t, float64(11), views) // Should be incremented from 10 to 11
+	}
+
+	// Verify the view was recorded in database
+	var updatedPost models.Post
+	err = collection.FindOne(context.Background(), bson.M{"_id": postID}).Decode(&updatedPost)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(11), updatedPost.Views)
+
+	// Verify view record was created in post_views collection
+	viewsCollection := database.Database.Collection("post_views")
+	var viewRecord models.PostView
+	err = viewsCollection.FindOne(context.Background(), bson.M{"post_id": postID}).Decode(&viewRecord)
+	assert.NoError(t, err)
+	assert.Equal(t, postID, viewRecord.PostID)
+	assert.NotEmpty(t, viewRecord.ViewedAt)
+}
+
 // TestE2EUpdatePost tests the update post endpoint against live API
 func TestE2EUpdatePost(t *testing.T) {
 	cleanup := setupE2ETestDB()

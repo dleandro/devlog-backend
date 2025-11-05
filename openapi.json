@@ -407,10 +407,10 @@
       }
     },
     "/posts/{id}/view": {
-      "post": {
+      "put": {
         "tags": ["Posts"],
         "summary": "Track a post view",
-        "description": "Record a view for analytics purposes",
+        "description": "Record a view for analytics purposes and return updated view count",
         "operationId": "viewPost",
         "security": [],
         "parameters": [

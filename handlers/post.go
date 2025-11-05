@@ -152,9 +152,6 @@ func GetPost(c *gin.Context) {
 		return
 	}
 
-	// Increment view count asynchronously
-	go incrementPostViews(post.ID, c.ClientIP(), c.GetHeader("User-Agent"))
-
 	log.Printf("[SUCCESS] GetPost: Retrieved post '%s' (ID: %s)", post.Title, post.ID.Hex())
 	c.JSON(http.StatusOK, post)
 }
@@ -356,15 +353,18 @@ func ViewPost(c *gin.Context) {
 		return
 	}
 
-	// Increment view count
-	go incrementPostViews(objectID, c.ClientIP(), c.GetHeader("User-Agent"))
+	// Increment view count synchronously and get updated count
+	newViewCount := incrementPostViews(objectID, c.ClientIP(), c.GetHeader("User-Agent"))
 
-	log.Printf("[SUCCESS] ViewPost: Successfully recorded view for post ID '%s' from IP %s", id, c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{"message": "Post view recorded successfully"})
+	log.Printf("[SUCCESS] ViewPost: Successfully recorded view for post ID '%s' from IP %s, new count: %d", id, c.ClientIP(), newViewCount)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "View tracked successfully",
+		"views":   newViewCount,
+	})
 }
 
-// incrementPostViews tracks post views (called asynchronously)
-func incrementPostViews(postID primitive.ObjectID, ipAddress, userAgent string) {
+// incrementPostViews tracks post views and returns the updated count
+func incrementPostViews(postID primitive.ObjectID, ipAddress, userAgent string) int64 {
 	// Create view record
 	view := models.PostView{
 		PostID:    postID,
@@ -377,20 +377,24 @@ func incrementPostViews(postID primitive.ObjectID, ipAddress, userAgent string) 
 	_, err := viewsCollection.InsertOne(context.Background(), view)
 	if err != nil {
 		log.Printf("[ERROR] incrementPostViews: Failed to record view for post %s - %s", postID.Hex(), err.Error())
-		return
+		return 0
 	}
 
-	// Increment view count in post
+	// Increment view count in post and get the updated document
 	postsCollection := database.Database.Collection("posts")
-	_, err = postsCollection.UpdateOne(
+	var updatedPost models.Post
+	err = postsCollection.FindOneAndUpdate(
 		context.Background(),
 		bson.M{"_id": postID},
 		bson.M{"$inc": bson.M{"views": 1}},
-	)
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&updatedPost)
 	if err != nil {
 		log.Printf("[ERROR] incrementPostViews: Failed to increment view count for post %s - %s", postID.Hex(), err.Error())
-		return
+		return 0
 	}
+
+	return updatedPost.Views
 }
 
 // generateSlug creates a URL-friendly slug from a title

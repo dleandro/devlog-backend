@@ -26,7 +26,7 @@ const (
 	contentTypeHeader = "Content-Type"
 	applicationJSON   = "application/json"
 	responseNotNil    = "Response should not be nil"
-	bearerPrefix      = "Bearer "
+	apiKeyHeader      = "X-API-Key"
 	updatedTitle      = "Updated E2E Test Post"
 	updatedContent    = "Updated content via E2E test"
 )
@@ -150,7 +150,7 @@ func TestE2ECreatePostWithValidAPIKey(t *testing.T) {
 	// Make REAL HTTP request to RUNNING API server
 	req, _ := http.NewRequest("POST", getAPIBaseURL()+postsEndpoint, bytes.NewBuffer(postJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
-	req.Header.Set("Authorization", bearerPrefix+getValidAPIKey())
+	req.Header.Set(apiKeyHeader, getValidAPIKey())
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -185,10 +185,10 @@ func TestE2ECreatePostWithoutAPIKey(t *testing.T) {
 
 	postJSON, _ := json.Marshal(testPost)
 
-	// Make request WITHOUT Authorization header to RUNNING API
+	// Make request WITHOUT X-API-Key header to RUNNING API
 	req, _ := http.NewRequest("POST", getAPIBaseURL()+postsEndpoint, bytes.NewBuffer(postJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
-	// No Authorization header
+	// No X-API-Key header
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -316,6 +316,98 @@ func TestE2ELikePost(t *testing.T) {
 	err = collection.FindOne(context.Background(), bson.M{"_id": postID}).Decode(&updatedPost)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), updatedPost.Likes)
+}
+
+// TestE2EDislikePost tests the dislike post endpoint against live API
+func TestE2EDislikePost(t *testing.T) {
+	cleanup := setupE2ETestDB()
+	defer cleanup()
+
+	// Create a test post with some likes
+	post := models.Post{
+		Title:     "Test Post for Dislike",
+		Content:   "Content for testing dislike functionality",
+		Slug:      "test-dislike-post",
+		Published: true,
+		Likes:     3, // Start with 3 likes
+		Views:     0,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	collection := database.Database.Collection("posts")
+	result, err := collection.InsertOne(context.Background(), post)
+	assert.NoError(t, err)
+
+	postID := result.InsertedID.(primitive.ObjectID)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	// Test disliking the post
+	req, _ := http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex()+"/dislike", nil)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
+
+	if assert.NotNil(t, resp, responseNotNil) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var response map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
+		assert.Contains(t, response, "message")
+		assert.Contains(t, response, "likes")
+
+		// Should return decremented like count
+		likes, ok := response["likes"].(float64) // JSON numbers are float64
+		assert.True(t, ok)
+		assert.Equal(t, float64(2), likes) // Should be decremented from 3 to 2
+	}
+
+	// Verify the dislike was recorded in database
+	var updatedPost models.Post
+	err = collection.FindOne(context.Background(), bson.M{"_id": postID}).Decode(&updatedPost)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), updatedPost.Likes)
+
+	// Test disliking a post with 0 likes
+	// First set likes to 0
+	_, err = collection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": postID},
+		bson.M{"$set": bson.M{"likes": 0}},
+	)
+	assert.NoError(t, err)
+
+	// Try to dislike again
+	req, _ = http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex()+"/dislike", nil)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
+
+	if assert.NotNil(t, resp, responseNotNil) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var response map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		assert.NoError(t, err)
+		assert.Contains(t, response, "message")
+		assert.Contains(t, response, "likes")
+
+		// Should remain at 0
+		likes, ok := response["likes"].(float64)
+		assert.True(t, ok)
+		assert.Equal(t, float64(0), likes)
+	}
+
+	// Verify likes count remains 0 in database
+	err = collection.FindOne(context.Background(), bson.M{"_id": postID}).Decode(&updatedPost)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), updatedPost.Likes)
 }
 
 // TestE2EGetSinglePost tests fetching a single post by ID
@@ -488,7 +580,7 @@ func TestE2EUpdatePost(t *testing.T) {
 	// Test updating the post
 	req, _ := http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), bytes.NewBuffer(updateJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
-	req.Header.Set("Authorization", bearerPrefix+getValidAPIKey())
+	req.Header.Set(apiKeyHeader, getValidAPIKey())
 
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
@@ -549,7 +641,7 @@ func TestE2EDeletePost(t *testing.T) {
 
 	// Test deleting the post
 	req, _ := http.NewRequest("DELETE", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), nil)
-	req.Header.Set("Authorization", bearerPrefix+getValidAPIKey())
+	req.Header.Set(apiKeyHeader, getValidAPIKey())
 
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
@@ -601,10 +693,10 @@ func TestE2EUpdatePostWithoutAuth(t *testing.T) {
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// Test updating without Authorization header
+	// Test updating without X-API-Key header
 	req, _ := http.NewRequest("PUT", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), bytes.NewBuffer(updateJSON))
 	req.Header.Set(contentTypeHeader, applicationJSON)
-	// No Authorization header
+	// No X-API-Key header
 
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
@@ -641,9 +733,9 @@ func TestE2EDeletePostWithoutAuth(t *testing.T) {
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// Test deleting without Authorization header
+	// Test deleting without X-API-Key header
 	req, _ := http.NewRequest("DELETE", getAPIBaseURL()+postsEndpoint+"/"+postID.Hex(), nil)
-	// No Authorization header
+	// No X-API-Key header
 
 	resp, err := client.Do(req)
 	assert.NoError(t, err)

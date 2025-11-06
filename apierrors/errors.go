@@ -114,6 +114,18 @@ var (
 		Details: "An error occurred while updating the post's like count",
 	}
 
+	ErrFailedToCheckLike = APIError{
+		Code:    CodeDatabaseError,
+		Message: "Failed to check existing like",
+		Details: "An error occurred while checking for existing like record",
+	}
+
+	ErrFailedToRemoveLike = APIError{
+		Code:    CodeDatabaseError,
+		Message: "Failed to remove like",
+		Details: "An error occurred while removing the like record from the database",
+	}
+
 	ErrFailedToFetchUpdatedPost = APIError{
 		Code:    CodeDatabaseError,
 		Message: "Failed to fetch updated post",
@@ -123,20 +135,20 @@ var (
 	// Authentication-related errors
 	ErrMissingAuthorization = APIError{
 		Code:    CodeUnauthorized,
-		Message: "Authorization header required",
-		Details: "Admin operations require a valid API key in the Authorization header",
+		Message: "X-API-Key header required",
+		Details: "Admin operations require a valid API key in the X-API-Key header",
 	}
 
 	ErrInvalidAuthFormat = APIError{
 		Code:    CodeUnauthorized,
-		Message: "Invalid authorization format",
-		Details: "Use 'Bearer <api-key>' format in the Authorization header",
+		Message: "Invalid API key format",
+		Details: "Please provide a valid API key in the X-API-Key header",
 	}
 
 	ErrEmptyAPIKey = APIError{
 		Code:    CodeUnauthorized,
 		Message: "API key cannot be empty",
-		Details: "Please provide a valid API key after 'Bearer '",
+		Details: "Please provide a valid API key in the X-API-Key header",
 	}
 
 	ErrInvalidAPIKey = APIError{
@@ -227,6 +239,14 @@ func RespondFailedToRecordLike(c *gin.Context) {
 
 func RespondFailedToUpdateLikeCount(c *gin.Context) {
 	RespondWithError(c, http.StatusInternalServerError, ErrFailedToUpdateLikeCount)
+}
+
+func RespondFailedToCheckLike(c *gin.Context) {
+	RespondWithError(c, http.StatusInternalServerError, ErrFailedToCheckLike)
+}
+
+func RespondFailedToRemoveLike(c *gin.Context) {
+	RespondWithError(c, http.StatusInternalServerError, ErrFailedToRemoveLike)
 }
 
 func RespondFailedToFetchUpdatedPost(c *gin.Context) {

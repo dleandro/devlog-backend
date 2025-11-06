@@ -269,61 +269,92 @@ func LikePost(c *gin.Context) {
 		return
 	}
 
-	clientIP := c.ClientIP()
-
-	// Check if post exists
+	// Check if post exists and increment likes in one operation
 	postsCollection := database.Database.Collection("posts")
-	var post models.Post
-	err = postsCollection.FindOne(context.Background(), bson.M{"_id": objectID}).Decode(&post)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			apierrors.RespondPostNotFound(c)
-			return
-		}
-		apierrors.RespondFailedToFetchPost(c)
-		return
-	}
-
-	// Check if already liked by this IP
-	likesCollection := database.Database.Collection("post_likes")
-	existingLike := likesCollection.FindOne(context.Background(), bson.M{
-		"post_id":    objectID,
-		"ip_address": clientIP,
-	})
-
-	if existingLike.Err() == nil {
-		apierrors.RespondPostAlreadyLiked(c)
-		return
-	}
-
-	// Create like record
-	like := models.PostLike{
-		PostID:    objectID,
-		IPAddress: clientIP,
-		LikedAt:   time.Now(),
-	}
-
-	_, err = likesCollection.InsertOne(context.Background(), like)
-	if err != nil {
-		log.Printf("[ERROR] LikePost: Failed to record like for post ID '%s' - %s", id, err.Error())
-		apierrors.RespondFailedToRecordLike(c)
-		return
-	}
-
-	// Increment likes count in post
-	_, err = postsCollection.UpdateOne(
+	var updatedPost models.Post
+	err = postsCollection.FindOneAndUpdate(
 		context.Background(),
 		bson.M{"_id": objectID},
 		bson.M{"$inc": bson.M{"likes": 1}},
-	)
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&updatedPost)
+
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			log.Printf("[ERROR] LikePost: Post not found for ID '%s'", id)
+			apierrors.RespondPostNotFound(c)
+			return
+		}
 		log.Printf("[ERROR] LikePost: Failed to update like count for post ID '%s' - %s", id, err.Error())
 		apierrors.RespondFailedToUpdateLikeCount(c)
 		return
 	}
 
-	log.Printf("[SUCCESS] LikePost: Successfully liked post ID '%s' from IP %s", id, clientIP)
-	c.JSON(http.StatusOK, gin.H{"message": "Post liked successfully"})
+	log.Printf("[SUCCESS] LikePost: Successfully liked post ID '%s', new count: %d", id, updatedPost.Likes)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Post liked successfully",
+		"likes":   updatedPost.Likes,
+	})
+}
+
+// DislikePost decrements the like count for a blog post
+func DislikePost(c *gin.Context) {
+	id := c.Param("id")
+	log.Printf("[INFO] DislikePost: Received request to dislike post ID '%s' from %s", id, c.ClientIP())
+
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Printf("[ERROR] DislikePost: Invalid post ID format '%s'", id)
+		apierrors.RespondInvalidPostID(c)
+		return
+	}
+
+	// Decrement likes count in post (ensure it doesn't go below 0)
+	postsCollection := database.Database.Collection("posts")
+	var updatedPost models.Post
+	err = postsCollection.FindOneAndUpdate(
+		context.Background(),
+		bson.M{
+			"_id":   objectID,
+			"likes": bson.M{"$gt": 0}, // Only update if likes > 0
+		},
+		bson.M{"$inc": bson.M{"likes": -1}},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&updatedPost)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			// Post not found or likes already 0, check which case it is
+			var post models.Post
+			err = postsCollection.FindOne(context.Background(), bson.M{"_id": objectID}).Decode(&post)
+			if err != nil {
+				if err == mongo.ErrNoDocuments {
+					log.Printf("[ERROR] DislikePost: Post not found for ID '%s'", id)
+					apierrors.RespondPostNotFound(c)
+					return
+				}
+				log.Printf("[ERROR] DislikePost: Failed to fetch post ID '%s' - %s", id, err.Error())
+				apierrors.RespondFailedToFetchPost(c)
+				return
+			}
+			// Post exists but likes already 0
+			log.Printf("[INFO] DislikePost: Post ID '%s' already has 0 likes", id)
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Post already has minimum likes",
+				"likes":   int64(0),
+			})
+			return
+		}
+		log.Printf("[ERROR] DislikePost: Failed to update like count for post ID '%s' - %s", id, err.Error())
+		apierrors.RespondFailedToUpdateLikeCount(c)
+		return
+	}
+
+	log.Printf("[SUCCESS] DislikePost: Successfully disliked post ID '%s', new count: %d", id, updatedPost.Likes)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Post disliked successfully",
+		"likes":   updatedPost.Likes,
+	})
 }
 
 // ViewPost increments the view count for a blog post

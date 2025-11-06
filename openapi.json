@@ -406,6 +406,63 @@
         }
       }
     },
+    "/posts/{id}/dislike": {
+      "put": {
+        "tags": ["Posts"],
+        "summary": "Dislike a blog post",
+        "description": "Decrement the like count for a specific blog post (minimum 0)",
+        "operationId": "dislikePost",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the blog post",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Post disliked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Post disliked successfully"
+                    },
+                    "likes": {
+                      "type": "integer",
+                      "format": "int64",
+                      "example": 41
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
     "/posts/{id}/view": {
       "put": {
         "tags": ["Posts"],

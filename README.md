@@ -43,6 +43,7 @@ dbl-blog-backend/
 - `GET /api/v1/posts` - Get all posts (with pagination and filtering)
 - `GET /api/v1/posts/:id` - Get a specific post by ID or slug
 - `PUT /api/v1/posts/:id/like` - Like a post
+- `PUT /api/v1/posts/:id/dislike` - Dislike a post (decrement likes)
 - `PUT /api/v1/posts/:id/view` - Track post view
 
 ### Protected Endpoints (Admin API Key Required)
@@ -54,7 +55,7 @@ dbl-blog-backend/
 **Authentication Header Required:**
 
 ```bash
-Authorization: Bearer <your-admin-api-key>
+X-API-Key: <your-admin-api-key>
 ```
 
 ### Health Check
@@ -87,12 +88,12 @@ The API uses API key-based authentication to protect admin operations (create, u
 
 ### Using Protected Endpoints
 
-Include the API key in the Authorization header:
+Include the API key in the X-API-Key header:
 
 ```bash
 # Create a new post
 curl -X POST http://localhost:8080/api/v1/posts \
-  -H "Authorization: Bearer your-admin-api-key" \
+  -H "X-API-Key: your-admin-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "New Blog Post",
@@ -103,13 +104,13 @@ curl -X POST http://localhost:8080/api/v1/posts \
 
 # Update a post
 curl -X PUT http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011 \
-  -H "Authorization: Bearer your-admin-api-key" \
+  -H "X-API-Key: your-admin-api-key" \
   -H "Content-Type: application/json" \
   -d '{"title": "Updated Title"}'
 
 # Delete a post
 curl -X DELETE http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011 \
-  -H "Authorization: Bearer your-admin-api-key"
+  -H "X-API-Key: your-admin-api-key"
 ```
 
 ### Authentication Errors
@@ -417,7 +418,7 @@ The middleware stack executes in the following order for different endpoint type
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/posts \
-  -H "Authorization: Bearer your-admin-api-key" \
+  -H "X-API-Key: your-admin-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "My First Engineering Post",
@@ -442,6 +443,14 @@ curl -X PUT http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/like
 ```
 
 **Note:** Like functionality uses PUT method because it's idempotent - multiple requests from the same IP have the same effect (prevents duplicate likes).
+
+### Dislike a Post
+
+```bash
+curl -X PUT http://localhost:8080/api/v1/posts/507f1f77bcf86cd799439011/dislike
+```
+
+**Note:** Dislike functionality decrements the like count (minimum 0). If the requesting IP has previously liked the post, their like record will be removed.
 
 ### Track a Post View
 
@@ -495,7 +504,7 @@ echo $ADMIN_API_KEYS
 ./scripts/generate-api-key.sh
 
 # Test authentication
-curl -H "Authorization: Bearer your-api-key" http://localhost:8080/api/v1/posts
+curl -H "X-API-Key: your-api-key" http://localhost:8080/api/v1/posts
 ```
 
 **3. Validation Errors**

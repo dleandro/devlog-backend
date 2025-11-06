@@ -29,32 +29,14 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Get Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			log.Printf("[SECURITY] AdminAuth: Missing Authorization header from %s", clientIP)
+		// Get X-API-Key header
+		providedKey := c.GetHeader("X-API-Key")
+		if providedKey == "" {
+			log.Printf("[SECURITY] AdminAuth: Missing X-API-Key header from %s", clientIP)
 			apierrors.RespondMissingAuthorization(c)
 			c.Abort()
 			return
 		}
-
-		// Check if header starts with "Bearer "
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			log.Printf("[SECURITY] AdminAuth: Invalid authorization format from %s", clientIP)
-			apierrors.RespondInvalidAuthFormat(c)
-			c.Abort()
-			return
-		}
-
-		// Extract API key
-		providedKey := strings.TrimPrefix(authHeader, "Bearer ")
-		if providedKey == "" {
-			log.Printf("[SECURITY] AdminAuth: Empty API key from %s", clientIP)
-			apierrors.RespondEmptyAPIKey(c)
-			c.Abort()
-			return
-		}
-
 		// Validate against all configured API keys using constant-time comparison
 		validKeys := strings.Split(adminAPIKeys, ",")
 		isValid := false

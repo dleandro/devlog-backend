@@ -61,27 +61,44 @@ func Connect() {
 		dbName = "dbl_blog"
 	}
 
-	log.Printf("Connecting to MongoDB: %s", mongoURI)
+	// Debug logging for Vercel deployment
+	log.Printf("=== MONGODB CONNECTION DEBUG ===")
+	log.Printf("Environment: %s", os.Getenv("VERCEL_ENV"))
+	log.Printf("DB_NAME: %s", dbName)
+
+	if mongoURI != "" {
+		// Don't log the full URI (contains credentials), just confirm it exists
+		log.Printf("MONGODB_URI: [SET - %d characters]", len(mongoURI))
+	} else {
+		log.Printf("MONGODB_URI: [NOT SET]")
+	}
+
+	log.Printf("Attempting MongoDB connection...")
 
 	// Create MongoDB client
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	Client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
-		log.Printf("Failed to connect to MongoDB: %s", err)
+		log.Printf("❌ MONGODB CONNECTION FAILED: %s", err)
+		log.Printf("🔍 Check: 1) MONGODB_URI format 2) Atlas cluster status 3) Network access")
 		log.Fatal("MongoDB connection failed")
 	}
+
+	log.Printf("✅ MongoDB client created, testing connection...")
 
 	// Test the connection
 	err = Client.Ping(ctx, nil)
 	if err != nil {
-		log.Printf("Failed to ping MongoDB: %s", err)
+		log.Printf("❌ MONGODB PING FAILED: %s", err)
+		log.Printf("🔍 Check: 1) Atlas cluster running 2) IP whitelist 3) Credentials")
 		log.Fatal("MongoDB ping failed")
 	}
 
 	Database = Client.Database(dbName)
-	log.Printf("Connected to MongoDB database: %s", dbName)
+	log.Printf("🚀 Successfully connected to MongoDB database: %s", dbName)
+	log.Printf("=== CONNECTION SUCCESS ===")
 }
 
 // CreateIndexes creates necessary indexes for better performance

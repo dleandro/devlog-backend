@@ -18,17 +18,23 @@ func CorsMiddleware() gin.HandlerFunc {
 		} else {
 			// Production - check if origin is allowed
 			origin := c.GetHeader("Origin")
-			origins := strings.Split(allowedOrigins, ",")
-			for _, allowedOrigin := range origins {
-				if strings.TrimSpace(allowedOrigin) == origin {
-					c.Header("Access-Control-Allow-Origin", origin)
-					break
+
+			// Allow Postman and other API clients (they often don't send Origin header)
+			if origin == "" {
+				c.Header("Access-Control-Allow-Origin", "*")
+			} else {
+				origins := strings.Split(allowedOrigins, ",")
+				for _, allowedOrigin := range origins {
+					if strings.TrimSpace(allowedOrigin) == origin {
+						c.Header("Access-Control-Allow-Origin", origin)
+						break
+					}
 				}
 			}
 		}
 
 		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-API-Key, accept, origin, Cache-Control, X-Requested-With")
 		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 
 		if c.Request.Method == "OPTIONS" {
